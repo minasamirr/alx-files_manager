@@ -1,5 +1,6 @@
-import crypto from 'crypto';
-import dbClient from '../utils/db';
+// controllers/UsersController.js
+const crypto = require('crypto');
+const dbClient = require('../utils/db');
 
 class UsersController {
   static async postNew(req, res) {
@@ -13,38 +14,27 @@ class UsersController {
       return res.status(400).json({ error: 'Missing password' });
     }
 
+    // Check if the email already exists
     const existingUser = await dbClient.db.collection('users').findOne({ email });
-
     if (existingUser) {
       return res.status(400).json({ error: 'Already exist' });
     }
 
+    // Hash the password using SHA1
     const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
 
+    // Create the new user
     const result = await dbClient.db.collection('users').insertOne({
       email,
       password: hashedPassword,
     });
 
-    return res.status(201).json({ id: result.insertedId, email });
+    // Respond with the new user data
+    return res.status(201).json({
+      id: result.insertedId.toString(),
+      email,
+    });
   }
-
-  static async getMe(req, res) {
-    const token = req.headers['x-token'];
-    const tokenKey = `auth_${token}`;
-
-    const userId = await redisClient.get(tokenKey);
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const user = await dbClient.db.collection('users').findOne({ _id: dbClient.getObjectId(userId) });
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    return res.status(200).json({ id: user._id, email: user.email });
-}
 }
 
-export default UsersController;
+module.exports = UsersController;
